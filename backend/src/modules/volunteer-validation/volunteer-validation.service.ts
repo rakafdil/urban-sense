@@ -22,6 +22,10 @@ export class VolunteerService {
     return this.voteReport(reportId, volunteerId, ValidationType.downvote);
   }
 
+  private getVotePoints(vote: ValidationType): number {
+    return vote === ValidationType.upvote ? 20 : 10;
+  }
+
   private async voteReport(
     reportId: string,
     volunteerId: string,
@@ -44,15 +48,123 @@ export class VolunteerService {
       },
     });
 
-    if (existingValidation) {
-      throw new HttpException(
-        'Anda sudah memberikan suara pada laporan ini.',
-        HttpStatus.CONFLICT,
-      );
+    if (existingValidation?.vote === vote) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.reportValidation.delete({
+          where: {
+            id: existingValidation.id,
+          },
+        });
+
+        await tx.report.update({
+          where: {
+            id: reportId,
+          },
+          data: {
+            priorityScore: {
+              increment: vote === ValidationType.upvote ? -5 : 5,
+            },
+
+            ...(vote === ValidationType.upvote && {
+              upvoteCount: {
+                decrement: 1,
+              },
+            }),
+
+            ...(vote === ValidationType.downvote && {
+              downvoteCount: {
+                decrement: 1,
+              },
+            }),
+          },
+        });
+
+        await this.updateValidationStatus(tx, reportId);
+      });
+
+      try {
+        await this.gamificationService.addPoints(
+          volunteerId,
+          -this.getVotePoints(vote),
+          'REPORT_VOTE_CANCELLED',
+        );
+      } catch (error) {
+        this.logger.warn(`Gagal mengurangi poin relawan ${volunteerId}`);
+      }
+
+      return {
+        action: 'removed',
+        vote,
+      };
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const validation = await tx.reportValidation.create({
+    if (existingValidation) {
+      const oldVote = existingValidation.vote;
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.reportValidation.update({
+          where: {
+            id: existingValidation.id,
+          },
+          data: {
+            vote,
+          },
+        });
+
+        await tx.report.update({
+          where: {
+            id: reportId,
+          },
+          data: {
+            priorityScore: {
+              increment: vote === ValidationType.upvote ? 10 : -10,
+            },
+
+            ...(vote === ValidationType.upvote && {
+              upvoteCount: {
+                increment: 1,
+              },
+              downvoteCount: {
+                decrement: 1,
+              },
+            }),
+
+            ...(vote === ValidationType.downvote && {
+              upvoteCount: {
+                decrement: 1,
+              },
+              downvoteCount: {
+                increment: 1,
+              },
+            }),
+          },
+        });
+
+        await this.updateValidationStatus(tx, reportId);
+      });
+
+      const pointDifference =
+        this.getVotePoints(vote) - this.getVotePoints(oldVote);
+
+      try {
+        await this.gamificationService.addPoints(
+          volunteerId,
+          pointDifference,
+          'REPORT_VOTE_UPDATED',
+        );
+      } catch (error) {
+        this.logger.warn(`Gagal memperbarui poin relawan ${volunteerId}`);
+      }
+
+      return {
+        action: 'updated',
+        oldVote,
+        newVote: vote,
+      };
+    }
+
+    const validation = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.reportValidation.create({
         data: {
           reportId,
           userId: volunteerId,
@@ -61,7 +173,9 @@ export class VolunteerService {
       });
 
       await tx.report.update({
-        where: { id: reportId },
+        where: {
+          id: reportId,
+        },
         data: {
           priorityScore: {
             increment: vote === ValidationType.upvote ? 5 : -5,
@@ -83,20 +197,24 @@ export class VolunteerService {
 
       await this.updateValidationStatus(tx, reportId);
 
-      return validation;
+      return created;
     });
 
     try {
       await this.gamificationService.addPoints(
         volunteerId,
-        vote === ValidationType.upvote ? 20 : 10,
+        this.getVotePoints(vote),
         'REPORT_VALIDATED',
       );
-    } catch {
-      this.logger.warn(`Gagal menambahkan poin untuk relawan ${volunteerId}`);
+    } catch (error) {
+      this.logger.warn(`Gagal menambahkan poin relawan ${volunteerId}`);
     }
 
-    return result;
+    return {
+      action: 'created',
+      vote,
+      validation,
+    };
   }
 
   private async updateValidationStatus(
@@ -160,68 +278,5 @@ export class VolunteerService {
         photoUrl: true,
       },
     });
-  }
-
-  async cancelVote(reportId: string, volunteerId: string) {
-    const validation = await this.prisma.reportValidation.findUnique({
-      where: {
-        reportId_userId: {
-          reportId,
-          userId: volunteerId,
-        },
-      },
-    });
-
-    if (!validation) {
-      throw new HttpException('Vote tidak ditemukan.', HttpStatus.NOT_FOUND);
-    }
-
-    await this.prisma.$transaction(async (tx) => {
-      await tx.reportValidation.delete({
-        where: {
-          id: validation.id,
-        },
-      });
-
-      await tx.report.update({
-        where: {
-          id: reportId,
-        },
-        data: {
-          priorityScore: {
-            decrement: validation.vote === ValidationType.upvote ? 5 : -5,
-          },
-
-          ...(validation.vote === ValidationType.upvote && {
-            upvoteCount: {
-              decrement: 1,
-            },
-          }),
-
-          ...(validation.vote === ValidationType.downvote && {
-            downvoteCount: {
-              decrement: 1,
-            },
-          }),
-        },
-      });
-
-      await tx.user.update({
-        where: {
-          id: volunteerId,
-        },
-        data: {
-          totalPoints: {
-            decrement: validation.vote === ValidationType.upvote ? 20 : 10,
-          },
-        },
-      });
-
-      await this.updateValidationStatus(tx, reportId);
-    });
-
-    return {
-      message: 'Vote berhasil dibatalkan.',
-    };
   }
 }
