@@ -95,7 +95,6 @@ export class ReportController {
   }
 
   @Get()
-  @Roles('admin')
   async getAllReports() {
     try {
       const reports = await this.reportService.getAllReports();
