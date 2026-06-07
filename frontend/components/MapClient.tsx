@@ -14,6 +14,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { X } from "lucide-react";
 import ImageViewer from "@/components/ImageViewer";
 
+type ReportWithCoords = Report & { lat: number; lng: number };
+
 // Perbaiki ikon Leaflet (wajib)
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -41,8 +43,8 @@ function Markers({
   reports,
   onSelect,
 }: {
-  reports: Report[];
-  onSelect: (r: Report) => void;
+  reports: ReportWithCoords[];
+  onSelect: (r: ReportWithCoords) => void;
 }) {
   return (
     <>
@@ -89,10 +91,14 @@ function DetailSidebar({
   onImageClick: (src: string) => void;
 }) {
   const statuses = [
+    "open",
     "dilaporkan",
-    "diverifikasi",
+    "in_progress",
     "dalam_penanganan",
+    "diverifikasi",
+    "resolved",
     "selesai",
+    "rejected",
   ] as const;
   const currentIdx = statuses.indexOf(report.status);
 
@@ -224,7 +230,7 @@ export default function MapClient() {
   const [selected, setSelected] = useState<Report | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null); // ← state ImageViewer
 
-  const reportsWithCoords = useMemo(() => {
+  const reportsWithCoords = useMemo<ReportWithCoords[]>(() => {
     return MOCK_REPORTS.map((r) => {
       if ((r as any).latitude != null && (r as any).longitude != null) {
         return { ...r, lat: (r as any).latitude, lng: (r as any).longitude };

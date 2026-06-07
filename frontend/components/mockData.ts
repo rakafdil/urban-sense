@@ -2,7 +2,11 @@ export type ReportStatus =
   | "open"
   | "in_progress"
   | "resolved"
-  | "rejected";
+  | "rejected"
+  | "dilaporkan"
+  | "diverifikasi"
+  | "dalam_penanganan"
+  | "selesai";
 export type ReportCategory = "jalan_rusak" | "banjir" | "sampah" | "infrastruktur" | "sosial" | "pencemaran";
 
 export interface Report {
@@ -18,6 +22,8 @@ export interface Report {
   reporterId: number;
   mapX: number;
   mapY: number;
+  latitude?: number;
+  longitude?: number;
   upvotes: number;
   imageUrl?: string;
   updatedAt: string;

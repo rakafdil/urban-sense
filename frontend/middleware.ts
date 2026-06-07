@@ -1,19 +1,30 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtDecode } from 'jwt-decode';
 
 export function middleware(request: NextRequest) {
-  // Ambil role dari cookie (sudah disimpan saat login)
-  const role = request.cookies.get('user_role')?.value;
+  // Ambil token dari cookie
+  const token = request.cookies.get('cookie_token')?.value;
+  let role: string | undefined;
+
+  if (token) {
+    try {
+      const decoded: any = jwtDecode(token);
+      role = decoded.role; // role dari payload JWT
+    } catch (error) {
+      console.error('Invalid token:', error);
+    }
+  }
+
   const { pathname } = request.nextUrl;
 
-  // Jika rute dimulai dengan /admin dan role bukan admin
+  // Proteksi rute /admin: hanya admin yang boleh akses
   if (pathname.startsWith('/admin') && role !== 'admin') {
-    // Redirect ke dashboard (atau halaman login jika belum login)
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // Opsional: jika role admin mencoba akses /dashboard, redirect ke /admin
+  // Opsional: redirect admin dari /dashboard ke /admin
   if (pathname.startsWith('/dashboard') && role === 'admin') {
     return NextResponse.redirect(new URL('/admin', request.url));
   }
@@ -21,7 +32,6 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Konfigurasi middleware hanya berjalan pada rute tertentu
 export const config = {
   matcher: ['/admin/:path*', '/dashboard/:path*'],
 };

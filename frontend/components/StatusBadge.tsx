@@ -1,12 +1,12 @@
-import { ReportStatus, STATUS_CONFIG } from "./WargaDashboard";
+import { STATUS_CONFIG } from "./WargaDashboard";
 
 interface StatusBadgeProps {
-  status: ReportStatus;
+  status: string;
   size?: "sm" | "md";
 }
 
 export function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
-  const config = STATUS_CONFIG[status];
+  const config = STATUS_CONFIG[status] ?? { label: status, color: "#9CA3AF" };
   const px = size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs";
   return (
     <span

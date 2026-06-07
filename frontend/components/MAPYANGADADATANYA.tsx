@@ -3,12 +3,13 @@
 import React, { useState, useMemo } from 'react'
 import { X, ThumbsUp, ThumbsDown, AlertTriangle, Waves, Trash, Lightbulb, Droplets, HeartHandshake, Leaf, Map as MapIcon } from 'lucide-react'
 import axios from 'axios'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import {
   useQuery,
   useMutation,
   useQueryClient,
-  QueryClient,
-  QueryClientProvider
 } from '@tanstack/react-query'
 
 // ==========================================
@@ -331,42 +332,6 @@ const DetailSidebar = ({ report, onClose, onImageClick }: { report: Report, onCl
   )
 }
 
-// Map Rendering Mock untuk lingkungan tanpa Leaflet
-const FallbackMarkers = ({ reports, onSelect }: { reports: Report[], onSelect: (r: Report) => void }) => {
-  return (
-    <>
-      {reports.map((r) => {
-        const color = STATUS_CONFIG[r.status]?.color || '#999'
-        const lat = parseFloat(r.latitude)
-        const lng = parseFloat(r.longitude)
-
-        if (isNaN(lat) || isNaN(lng)) return null
-
-        const top = `${Math.min(Math.max(((lat - (-5)) / (-9 - (-5))) * 100, 5), 95)}%`
-        const left = `${Math.min(Math.max(((lng - 105) / (115 - 105)) * 100, 5), 95)}%`
-
-        return (
-          <div
-            key={r.id}
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-10 hover:z-50"
-            style={{ top, left }}
-            onClick={() => onSelect(r)}
-          >
-            <div 
-              className="w-4 h-4 rounded-full border-[3px] border-slate-900 shadow-md transition-transform group-hover:scale-125" 
-              style={{ backgroundColor: color }} 
-            />
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 hidden group-hover:block bg-slate-800 text-white text-[10px] px-2 py-1.5 rounded shadow-lg whitespace-nowrap border border-slate-700 pointer-events-none">
-              <strong className="block text-xs">{r.title.substring(0, 25)}{r.title.length > 25 ? '...' : ''}</strong>
-              <span className="text-slate-400">{CATEGORIES[r.category]?.label || 'Lainnya'}</span>
-            </div>
-          </div>
-        )
-      })}
-    </>
-  )
-}
-
 // ==========================================
 // 6. MAIN MAP COMPONENT
 // ==========================================
@@ -381,10 +346,19 @@ export function MapView() {
     return reports.find(r => r.id === selected.id) || selected
   }, [selected, reports])
 
+  const mapCenter = useMemo<[number, number]>(() => {
+    const first = reports?.find((r) => {
+      const lat = parseFloat(r.latitude)
+      const lng = parseFloat(r.longitude)
+      return !isNaN(lat) && !isNaN(lng)
+    })
+    if (!first) return [-6.2, 106.8]
+    return [parseFloat(first.latitude), parseFloat(first.longitude)]
+  }, [reports])
+
   return (
     <div className="flex h-full w-full bg-[#0B1121] text-slate-200">
       <div className="flex-1 relative overflow-hidden bg-[#0F172A]">
-        
         {isLoading && (
           <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-[#0B1121]/80 backdrop-blur-sm">
             <div className="animate-pulse flex flex-col items-center">
@@ -403,13 +377,46 @@ export function MapView() {
           </div>
         )}
 
-        {/* Visualisasi pengganti peta agar terhindar dari masalah render module 'react-leaflet' */}
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-        <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-           <MapIcon size={400} />
-        </div>
-        
-        {reports && <FallbackMarkers reports={reports} onSelect={setSelected} />}
+        <MapContainer
+          center={mapCenter}
+          zoom={13}
+          scrollWheelZoom={true}
+          className="h-full w-full"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {reports?.map((report) => {
+            const lat = parseFloat(report.latitude)
+            const lng = parseFloat(report.longitude)
+            if (isNaN(lat) || isNaN(lng)) return null
+
+            const icon = L.divIcon({
+              className: 'custom-div-icon',
+              html: `<div style="background:${STATUS_CONFIG[report.status]?.color || '#999'};width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+              iconSize: [16, 16],
+              iconAnchor: [8, 8],
+            })
+
+            return (
+              <Marker
+                key={report.id}
+                position={[lat, lng]}
+                icon={icon}
+                eventHandlers={{ click: () => setSelected(report) }}
+              >
+                <Popup>
+                  <div style={{ fontSize: 13 }}>
+                    <strong>{report.title}</strong>
+                    <br />
+                    <span style={{ color: '#666' }}>{CATEGORIES[report.category]?.label || 'Lainnya'}</span>
+                  </div>
+                </Popup>
+              </Marker>
+            )
+          })}
+        </MapContainer>
 
         <div className="absolute bottom-4 left-4 rounded-xl p-3 border border-slate-700 shadow-xl z-[1000]" style={{ background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(12px)' }}>
           <div className="text-slate-400 mb-2 font-mono text-[10px] tracking-widest font-bold">LEGENDA STATUS</div>

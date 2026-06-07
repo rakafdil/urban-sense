@@ -16,7 +16,16 @@ export default function ReportDetail() {
     return <div className="p-6 text-muted-foreground">Laporan tidak ditemukan</div>
   }
 
-  const statuses = ['dilaporkan', 'diverifikasi', 'dalam_penanganan', 'selesai'] as const
+  const statuses = [
+    'open',
+    'dilaporkan',
+    'in_progress',
+    'dalam_penanganan',
+    'diverifikasi',
+    'resolved',
+    'selesai',
+    'rejected',
+  ] as const
   const currentIdx = statuses.indexOf(report.status)
 
   return (

@@ -1,6 +1,6 @@
 'use client'
 
-import { MapView } from '@/components/MapView'
+import { MapView } from '@/components/MAPYANGADADATANYA'
 
 export default function MapPage() {
   return (
