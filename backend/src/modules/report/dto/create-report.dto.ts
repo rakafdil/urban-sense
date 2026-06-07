@@ -1,3 +1,4 @@
+import { ReportCategory } from '@prisma/client';
 import {
   IsString,
   IsNotEmpty,
@@ -7,17 +8,6 @@ import {
   IsOptional,
   IsEnum,
 } from 'class-validator';
-
-export enum ReportCategory {
-  ROAD_DAMAGE = 'road_damage',
-  FLOOD = 'flood',
-  GARBAGE = 'garbage',
-  STREET_LIGHT = 'street_light',
-  DRAINAGE = 'drainage',
-  SOCIAL_ASSISTANCE = 'social_assistance',
-  ENVIRONMENT = 'environment',
-  OTHER = 'other',
-}
 
 export class CreateReportDto {
   @IsString({ message: 'Judul harus berupa teks.' })

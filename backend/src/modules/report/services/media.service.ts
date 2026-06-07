@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import {
   v2 as cloudinary,

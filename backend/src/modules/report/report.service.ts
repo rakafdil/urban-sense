@@ -1,12 +1,16 @@
-/**
- * @file src/modules/reports/services/report.service.ts
- * @description Service layer untuk menangani business logic terkait Laporan.
- * Memisahkan tanggung jawab dari Controller (Separation of Concerns).
- */
-
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  HttpException,
+  HttpStatus,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReportDto } from './dto/create-report.dto';
+import { UpdateReportStatusDto } from './dto/update-report-status.dto';
+import { MediaService } from './services/media.service';
+import { AiService } from './services/ai.service';
+import { ReportCategory } from '@prisma/client';
 
 @Injectable()
 export class ReportService {
@@ -16,8 +20,8 @@ export class ReportService {
     private readonly prisma: PrismaService,
     private readonly mediaService: MediaService,
     private readonly aiService: AiService,
-    private readonly gamificationService: GamificationService,
-    private readonly notificationService: NotificationService,
+    // private readonly gamificationService: GamificationService,
+    // private readonly notificationService: NotificationService,
   ) {}
 
   async createReport(
@@ -25,28 +29,34 @@ export class ReportService {
     dto: CreateReportDto,
     photoBuffer: Buffer,
   ) {
-    // 1. Upload ke Cloudinary
     const photoUrl = await this.mediaService.uploadImage(photoBuffer);
 
-    // 2. Auto-Kategorisasi via OpenAI Vision
+    if (!dto.longitude || !dto.latitude) {
+      throw new BadRequestException('Longitude wajib diisi');
+    }
     let aiAnalysis = { category: 'other', severity: 'low', summary: '' };
     try {
       aiAnalysis = await this.aiService.analyzeReportPhoto(
         photoUrl,
         dto.description,
       );
-    } catch (error) {
-      this.logger.warn(`AI Analysis failed, using fallback: ${error.message}`);
+    } catch (error: unknown) {
+      let errorMessage = 'Gagal menganalisis gambar';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      this.logger.warn(`AI Analysis failed, using fallback: ${errorMessage}`);
     }
 
-    // 3. Simpan ke PostgreSQL
     const newReport = await this.prisma.report.create({
       data: {
         userId,
         title: dto.title,
         description: dto.description,
-        category: aiAnalysis.category as any,
-        severity: aiAnalysis.severity as any,
+        category: aiAnalysis.category as ReportCategory,
+        severity: aiAnalysis.severity as 'low' | 'medium' | 'high' | 'critical',
         status: 'open',
         latitude: parseFloat(dto.latitude),
         longitude: parseFloat(dto.longitude),
@@ -57,7 +67,7 @@ export class ReportService {
     });
 
     // 4. Trigger gamifikasi untuk warga
-    await this.gamificationService.addPoints(userId, 10, 'REPORT_SUBMITTED');
+    // await this.gamificationService.addPoints(userId, 10, 'REPORT_SUBMITTED');
 
     return newReport;
   }
@@ -92,30 +102,30 @@ export class ReportService {
       throw new HttpException('Laporan tidak ditemukan', HttpStatus.NOT_FOUND);
     }
 
-    // 2. Update status
+    // 2. Update status (Type-Safe Casting)
     const updatedReport = await this.prisma.report.update({
       where: { id: reportId },
-      data: { status: dto.status as any },
+      data: { status: dto.status },
     });
 
-    // 3. Catat ke log histori status
+    // 3. Catat ke log histori status (Type-Safe Casting)
     await this.prisma.reportStatusLog.create({
       data: {
         reportId,
-        updatedById: adminId,
-        oldStatus: existingReport.status as any,
-        newStatus: dto.status as any,
+        updatedBy: adminId,
+        oldStatus: existingReport.status,
+        newStatus: dto.status,
         notes: dto.notes || 'Status diperbarui oleh Admin',
       },
     });
 
     // 4. Kirim notifikasi ke pembuat laporan
-    const message = `Status laporan Anda "${existingReport.title}" telah diubah menjadi ${dto.status}.`;
-    await this.notificationService.sendPushNotification(
-      existingReport.userId,
-      'Pembaruan Status Laporan',
-      message,
-    );
+    // const message = `Status laporan Anda "${existingReport.title}" telah diubah menjadi ${dto.status}.`;
+    // await this.notificationService.sendPushNotification(
+    //   existingReport.userId,
+    //   'Pembaruan Status Laporan',
+    //   message,
+    // );
 
     return updatedReport;
   }
