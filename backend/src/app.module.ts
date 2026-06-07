@@ -5,8 +5,10 @@ import { AppService } from './app.service.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { PrismaModule } from './modules/prisma/prisma.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
-import { AgentModule } from './modules/agent/agent.module.js';
-import { CalendarModule } from './modules/calendar/calendar.module.js';
+import { ReportModule } from './modules/report/report.module.js';
+import { AdminManagementModule } from './modules/admin-management/admin-management.module.js';
+import { GeospatialModule } from './modules/geospatial/geospatial.module.js';
+import { VolunteerValidationModule } from './modules/volunteer-validation/volunteer-validation.module.js';
 
 @Module({
   imports: [
@@ -14,8 +16,10 @@ import { CalendarModule } from './modules/calendar/calendar.module.js';
     PrismaModule,
     AuthModule,
     UsersModule,
-    AgentModule,
-    CalendarModule,
+    ReportModule,
+    AdminManagementModule,
+    GeospatialModule,
+    VolunteerValidationModule
   ],
   controllers: [AppController],
   providers: [AppService],

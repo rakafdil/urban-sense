@@ -39,7 +39,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     // Remove hash from the user object before attaching to request
-    const { hash, ...userWithoutHash } = user;
+    const { passwordHash, ...userWithoutHash } = user;
     return userWithoutHash;
   }
 }

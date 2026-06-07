@@ -21,8 +21,8 @@ export class RegisterDto {
 
   @ApiProperty({ example: 'John Doe', required: false })
   @IsString()
-  @IsOptional()
-  name?: string;
+  @IsNotEmpty()
+  fullName!: string;
 }
 
 export class LoginDto {
