@@ -6,6 +6,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Param,
   Req,
   UseGuards,
@@ -32,10 +33,6 @@ export class VolunteerController {
     private readonly gamificationService: GamificationService,
   ) {}
 
-  /**
-   * Endpoint: GET /api/volunteers/reports/pending
-   * Fungsi: Melihat daftar laporan yang belum divalidasi oleh relawan yang sedang login
-   */
   @Get('reports/pending')
   async getPendingReports(@Req() req: Request) {
     try {
@@ -69,5 +66,10 @@ export class VolunteerController {
   @Post('reports/:reportId/downvote')
   async downvoteReport(@Param('reportId') reportId: string, @Req() req) {
     return this.volunteerService.downvoteReport(reportId, req.user.id);
+  }
+
+  @Delete('reports/:reportId/vote')
+  async cancelVote(@Param('reportId') reportId: string, @Req() req) {
+    return this.volunteerService.cancelVote(reportId, req.user.id);
   }
 }

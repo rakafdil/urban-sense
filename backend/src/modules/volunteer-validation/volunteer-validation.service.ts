@@ -64,7 +64,7 @@ export class VolunteerService {
         where: { id: reportId },
         data: {
           priorityScore: {
-            increment: vote === ValidationType.upvote ? 5 : -2,
+            increment: vote === ValidationType.upvote ? 5 : -5,
           },
 
           ...(vote === ValidationType.upvote && {
@@ -160,5 +160,68 @@ export class VolunteerService {
         photoUrl: true,
       },
     });
+  }
+
+  async cancelVote(reportId: string, volunteerId: string) {
+    const validation = await this.prisma.reportValidation.findUnique({
+      where: {
+        reportId_userId: {
+          reportId,
+          userId: volunteerId,
+        },
+      },
+    });
+
+    if (!validation) {
+      throw new HttpException('Vote tidak ditemukan.', HttpStatus.NOT_FOUND);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.reportValidation.delete({
+        where: {
+          id: validation.id,
+        },
+      });
+
+      await tx.report.update({
+        where: {
+          id: reportId,
+        },
+        data: {
+          priorityScore: {
+            decrement: validation.vote === ValidationType.upvote ? 5 : -5,
+          },
+
+          ...(validation.vote === ValidationType.upvote && {
+            upvoteCount: {
+              decrement: 1,
+            },
+          }),
+
+          ...(validation.vote === ValidationType.downvote && {
+            downvoteCount: {
+              decrement: 1,
+            },
+          }),
+        },
+      });
+
+      await tx.user.update({
+        where: {
+          id: volunteerId,
+        },
+        data: {
+          totalPoints: {
+            decrement: validation.vote === ValidationType.upvote ? 20 : 10,
+          },
+        },
+      });
+
+      await this.updateValidationStatus(tx, reportId);
+    });
+
+    return {
+      message: 'Vote berhasil dibatalkan.',
+    };
   }
 }
