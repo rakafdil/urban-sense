@@ -17,6 +17,33 @@ export class ReportService {
     // private readonly notificationService: NotificationService,
   ) {}
 
+  private calculateValidationSummary(
+    upvoteCount: number,
+    downvoteCount: number,
+    validationStatus: string,
+  ) {
+    const totalVotes = upvoteCount + downvoteCount;
+
+    const confidence =
+      totalVotes === 0
+        ? 0
+        : Number(
+            (
+              (upvoteCount / totalVotes) *
+              Math.min(totalVotes / 5, 1) *
+              100
+            ).toFixed(2),
+          );
+
+    return {
+      upvotes: upvoteCount,
+      downvotes: downvoteCount,
+      totalVotes,
+      validationStatus,
+      confidence,
+    };
+  }
+
   async createReport(
     userId: string,
     dto: CreateReportDto,
@@ -66,18 +93,49 @@ export class ReportService {
   }
 
   async getReportsByUserId(userId: string) {
-    return this.prisma.report.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
+    const reports = await this.prisma.report.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
+
+    return reports.map((report) => ({
+      ...report,
+
+      validationSummary: this.calculateValidationSummary(
+        report.upvoteCount,
+        report.downvoteCount,
+        report.validationStatus,
+      ),
+    }));
   }
 
   async getAllReports() {
-    return this.prisma.report.findMany({
-      orderBy: { createdAt: 'desc' },
+    const reports = await this.prisma.report.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
       include: {
-        user: { select: { fullName: true, email: true } },
+        user: {
+          select: {
+            fullName: true,
+            email: true,
+          },
+        },
       },
     });
+
+    return reports.map((report) => ({
+      ...report,
+
+      validationSummary: this.calculateValidationSummary(
+        report.upvoteCount,
+        report.downvoteCount,
+        report.validationStatus,
+      ),
+    }));
   }
 }
