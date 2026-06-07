@@ -24,6 +24,8 @@ import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportStatusDto } from './dto/update-report-status.dto';
 
 import { ReportService } from './report.service';
+import { ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { CreateReportWithFileDto } from './dto/create-report-with-file.dto';
 
 @Controller('reports')
 export class ReportController {
@@ -32,6 +34,10 @@ export class ReportController {
   constructor(private readonly reportService: ReportService) {}
 
   @Post()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    type: CreateReportWithFileDto,
+  })
   @UseInterceptors(FileInterceptor('photo'))
   async createReport(
     @Req() req: Request,
@@ -39,7 +45,7 @@ export class ReportController {
     @UploadedFile() photo: Express.Multer.File,
   ) {
     try {
-      const user = req.user as any;
+      // const user = req.user as any;
 
       if (!photo) {
         throw new HttpException(
@@ -49,7 +55,7 @@ export class ReportController {
       }
 
       const newReport = await this.reportService.createReport(
-        user.id,
+        '1',
         dto,
         photo.buffer,
       );
