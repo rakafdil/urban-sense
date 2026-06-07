@@ -66,12 +66,42 @@ const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string }> = {
   rejected: { label: 'Ditolak', color: '#6B7280' },
 };
 
-const CATEGORIES: Record<ReportCategory, { label: string; icon: string; color: string }> = {
-  infrastructure: { label: 'Infrastruktur', icon: '🏗️', color: '#3B82F6' },
-  cleanliness: { label: 'Kebersihan', icon: '🧹', color: '#10B981' },
-  security: { label: 'Keamanan', icon: '🔒', color: '#F59E0B' },
-  social: { label: 'Sosial', icon: '👥', color: '#8B5CF6' },
-  other: { label: 'Lainnya', icon: '📌', color: '#64748B' },
+const CATEGORIES = {
+  road_damage: {
+    label: 'Jalan Rusak',
+    color: '#EF4444',
+    icon: '🛣️',
+  },
+  street_light: {
+    label: 'Lampu Jalan',
+    color: '#F59E0B',
+    icon: '💡',
+  },
+  drainage: {
+    label: 'Drainase',
+    color: '#06B6D4',
+    icon: '🌊',
+  },
+  flood: {
+    label: 'Banjir',
+    color: '#3B82F6',
+    icon: '🌧️',
+  },
+  garbage: {
+    label: 'Sampah',
+    color: '#10B981',
+    icon: '🗑️',
+  },
+  environment: {
+    label: 'Lingkungan',
+    color: '#8B5CF6',
+    icon: '🌳',
+  },
+  social_assistance: {
+    label: 'Bantuan Sosial',
+    color: '#EC4899',
+    icon: '🤝',
+  },
 };
 
 const statusFlow: ReportStatus[] = ['open', 'in_progress', 'resolved'];
@@ -369,7 +399,7 @@ export function AdminDashboard() {
                     cx="50%"
                     cy="50%"
                     innerRadius={38}
-                    outerRadius={58}
+                    outerRadius={60}
                     paddingAngle={3}
                     dataKey="value"
                   >
