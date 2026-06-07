@@ -29,6 +29,8 @@ async function bootstrap() {
     }),
   );
 
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
+
   // Swagger API documentation
   const config = new DocumentBuilder()
     .setTitle('Urban Sense API')

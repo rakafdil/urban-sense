@@ -16,7 +16,7 @@ export class UsersService {
     }
 
     // Remove hash before returning
-    const { hash, ...userWithoutHash } = user;
+    const { passwordHash, ...userWithoutHash } = user;
     return userWithoutHash;
   }
 
@@ -27,7 +27,7 @@ export class UsersService {
     });
 
     // Remove hash before returning
-    const { hash, ...userWithoutHash } = user;
+    const { passwordHash, ...userWithoutHash } = user;
     return userWithoutHash;
   }
 }

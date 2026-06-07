@@ -7,8 +7,7 @@ import { PrismaClient } from '@prisma/client';
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
+  implements OnModuleInit, OnModuleDestroy {
   constructor() {
     const isProduction = process.env.NODE_ENV === 'production';
     const connectionString = isProduction
@@ -43,11 +42,16 @@ export class PrismaService
   }
 
   cleanDatabase() {
+    // Order matters: delete child records first (foreign keys)
     return this.$transaction([
-      this.message.deleteMany(),
-      this.task.deleteMany(),
-      this.session.deleteMany(),
+      this.reportStatusLog.deleteMany(),
+      this.reportValidation.deleteMany(),
+      this.reportDistrict.deleteMany(),
+      this.notification.deleteMany(),
+      this.report.deleteMany(),
       this.user.deleteMany(),
+      // District may be referenced by ReportDistrict, so delete after or keep as reference data
+      this.district.deleteMany(),
     ]);
   }
 }
