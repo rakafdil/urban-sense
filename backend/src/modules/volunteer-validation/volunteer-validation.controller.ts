@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -6,7 +5,6 @@ import {
   Controller,
   Post,
   Get,
-  Delete,
   Param,
   Req,
   UseGuards,
@@ -23,8 +21,8 @@ import { GamificationService } from '../../services/gamification.service';
 import { Roles } from '../auth/decorator/roles.decorator';
 
 @Controller('volunteers')
-@UseGuards(JwtGuard, RolesGuard) // Aktifkan JWT dan RBAC
-@Roles('volunteer') // HANYA role "volunteer" yang bisa mengakses semua endpoint di controller ini
+@UseGuards(JwtGuard, RolesGuard)
+@Roles('volunteer')
 export class VolunteerController {
   private readonly logger = new Logger(VolunteerController.name);
 
@@ -66,10 +64,5 @@ export class VolunteerController {
   @Post('reports/:reportId/downvote')
   async downvoteReport(@Param('reportId') reportId: string, @Req() req) {
     return this.volunteerService.downvoteReport(reportId, req.user.id);
-  }
-
-  @Delete('reports/:reportId/vote')
-  async cancelVote(@Param('reportId') reportId: string, @Req() req) {
-    return this.volunteerService.cancelVote(reportId, req.user.id);
   }
 }
