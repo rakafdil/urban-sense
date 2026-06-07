@@ -1,201 +1,357 @@
-'use client'
+"use client";
 
-import { useState, useRef } from 'react'
-import { apiFetchForm } from '@/lib/api'
-import { X, MapPin, Camera, Zap, ChevronDown, CheckCircle } from 'lucide-react'
-import { CATEGORIES, ReportCategory } from './mockData'
-import dynamic from 'next/dynamic'
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import dynamic from "next/dynamic";
+import {
+  Plus,
+  X,
+  Loader2,
+  Navigation,
+  CheckCircle,
+  ImageIcon,
+  Upload,
+  MapPin,
+} from "lucide-react";
+import { CATEGORIES } from "./WargaDashboard";
+import { ReportCategory } from "@/app/types/report.type";
+import { useCreateReport } from "@/app/hooks/report/useCreateReport";
 
-const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
+type ReportFormInputs = {
+  title: string;
+  category: ReportCategory;
+  description: string;
+  address: string;
+  latitude: string;
+  longitude: string;
+  photo: FileList;
+};
+
+const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
   ssr: false,
-})
+});
 
-interface ReportFormProps {
-  onClose: () => void
-  onSubmit: (data: {
-    title: string
-    category: ReportCategory
-    description: string
-    address: string
-    imageUrl?: string
-  }) => void
-}
+const ReportForm = ({
+  onClose,
+  onSubmitSuccess,
+}: {
+  onClose: () => void;
+  onSubmitSuccess: () => void;
+}) => {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    setValue,
+  } = useForm<ReportFormInputs>();
 
-export function ReportForm({ onClose, onSubmit }: ReportFormProps) {
-  const [step, setStep] = useState<'form' | 'success'>('form')
-  const [title, setTitle] = useState('')
-  const [category, setCategory] = useState<ReportCategory>('jalan_rusak')
-  const [description, setDescription] = useState('')
-  const [address, setAddress] = useState('Jakarta Pusat')
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [detectingAI, setDetectingAI] = useState(false)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [aiDetected, setAiDetected] = useState(false)
-  const [showMapPicker, setShowMapPicker] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const createReportMutation = useCreateReport();
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
-  const handleAIDetect = () => {
-    if (!imagePreview) return
-    setDetectingAI(true)
-    setTimeout(() => {
-      setCategory('jalan_rusak')
-      setTitle('Kerusakan jalan dengan lubang signifikan')
-      setDescription('Terdeteksi kerusakan permukaan jalan berupa lubang berukuran besar yang berpotensi membahayakan kendaraan bermotor.')
-      setDetectingAI(false)
-      setAiDetected(true)
-    }, 1800)
-  }
+  // State baru untuk menyimpan URL preview gambar
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const photoFile = watch("photo");
+  const lat = watch("latitude");
+  const lng = watch("longitude");
+
+  // Logika untuk menangani pratinjau gambar (diambil dari snippet atas, disesuaikan react-hook-form)
+  useEffect(() => {
+    // photoFile adalah FileList. Cek jika ada file yang dipilih.
+    if (photoFile && photoFile.length > 0) {
+      const file = photoFile[0];
+
+      // Buat object URL untuk preview
+      const url = URL.createObjectURL(file);
+      setImagePreview(url);
+
+      // Cleanup function untuk menghindari memory leak
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else {
+      // Jika file dihapus, hapus preview
+      setImagePreview(null);
+    }
+  }, [photoFile]);
+
+  // Fungsi untuk menghapus foto
+  const handleRemovePhoto = () => {
+    // Reset nilai di react-hook-form
+    setValue("photo", null as any, { shouldValidate: true });
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Browser Anda tidak mendukung Geolocation");
+      return;
+    }
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setValue("latitude", position.coords.latitude.toString(), {
+          shouldValidate: true,
+        });
+        setValue("longitude", position.coords.longitude.toString(), {
+          shouldValidate: true,
+        });
+        setIsGettingLocation(false);
+      },
+      (error) => {
+        console.error(error);
+        alert("Gagal mendapatkan lokasi. Pastikan izin lokasi diaktifkan.");
+        setIsGettingLocation(false);
+      },
+      { enableHighAccuracy: true },
+    );
+  };
 
   const handleLocationSelect = (lat: number, lng: number, addr: string) => {
-    setLocation({ lat, lng })
-    setAddress(addr)
-  }
+    setValue("latitude", lat.toString(), { shouldValidate: true });
+    setValue("longitude", lng.toString(), { shouldValidate: true });
+    setValue("address", addr, { shouldValidate: true });
+    setShowMapPicker(false);
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!imageFile) {
-      alert('Foto laporan wajib disertakan!')
-      return
-    }
-    setLoading(true)
+  const onSubmit = async (data: ReportFormInputs) => {
     try {
-      const formData = new FormData()
-      formData.append('title', title)
-      formData.append('description', description)
-      formData.append('category', category)
-      formData.append('address', address)
-      formData.append('latitude', String(location?.lat ?? -6.2))
-      formData.append('longitude', String(location?.lng ?? 106.8))
-      formData.append('photo', imageFile)
-
-      await apiFetchForm('/reports', formData)
-      onSubmit({
-        title,
-        category,
-        description,
-        address,
-        imageUrl: imagePreview ?? undefined,
-      })
-      setStep('success')
-    } catch (err: any) {
-      alert(err.message)
-    } finally {
-      setLoading(false)
+      await createReportMutation.mutateAsync({
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        address: data.address,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        photo: data.photo[0], // Ambil file pertama
+      });
+      onSubmitSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Failed to submit report", error);
     }
-  }
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setImageFile(file)
-      const url = URL.createObjectURL(file)
-      setImagePreview(url)
-      setAiDetected(false)
-    }
-  }
-
-  if (step === 'success') {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
-        <div className="bg-card border border-border rounded-xl p-10 flex flex-col items-center gap-4 max-w-sm w-full text-center">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.15)' }}>
-            <CheckCircle size={32} style={{ color: '#10B981' }} />
-          </div>
-          <h2 className="text-foreground">Laporan Terkirim!</h2>
-          <p className="text-muted-foreground text-sm">Laporan Anda telah diterima dan sedang dianalisis.</p>
-          <div className="flex items-center gap-2 text-sm" style={{ color: '#F59E0B' }}>
-            <span>🏅</span>
-            <span>+20 poin ditambahkan ke akun Anda!</span>
-          </div>
-          <button onClick={onClose} className="mt-2 w-full py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90" style={{ background: '#3B82F6', color: '#fff' }}>
-            Kembali ke Dashboard
-          </button>
-        </div>
-      </div>
-    )
-  }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
-      <div className="bg-card border border-border rounded-t-2xl sm:rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card z-10">
-          <div>
-            <h2 className="text-foreground">Laporkan Masalah</h2>
-            <p className="text-muted-foreground text-xs mt-0.5">Bantu kami membangun kota yang lebih baik</p>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground">
-            <X size={18} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#1E293B] rounded-2xl w-full max-w-lg border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-full">
+        <div className="flex items-center justify-between p-4 border-b border-slate-700 bg-[#0F172A]">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Plus size={18} className="text-blue-500" /> Buat Laporan Baru
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"
+          >
+            <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <div className="rounded-lg p-3 flex items-start gap-3 border border-border" style={{ background: 'rgba(59,130,246,0.08)' }}>
-            <MapPin size={16} className="mt-0.5 flex-shrink-0" style={{ color: '#3B82F6' }} />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground mb-0.5">Lokasi</p>
-              <input
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-                className="text-sm text-foreground bg-transparent w-full outline-none"
-                placeholder="Ketik alamat atau pilih dari peta"
-              />
-            </div>
-            <button type="button" onClick={() => setShowMapPicker(true)} className="text-xs text-primary hover:underline flex-shrink-0">
-              Pilih dari Peta
-            </button>
-          </div>
-
-          <div>
-            <label className="text-sm text-foreground block mb-2">Foto Masalah</label>
-            {imagePreview ? (
-              <div className="relative rounded-lg overflow-hidden border border-border">
-                <img src={imagePreview} alt="preview" className="w-full h-48 object-cover" />
-                <button type="button" onClick={() => { setImagePreview(null); setImageFile(null); setAiDetected(false); }} className="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white hover:bg-black/80">
-                  <X size={14} />
-                </button>
-                <button type="button" onClick={handleAIDetect} disabled={detectingAI} className="absolute bottom-2 left-2 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-90 disabled:opacity-60" style={{ background: '#8B5CF6', color: '#fff' }}>
-                  <Zap size={12} />
-                  {detectingAI ? 'Mendeteksi AI...' : aiDetected ? '✓ Terdeteksi' : 'Deteksi Otomatis'}
-                </button>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center h-40 rounded-lg border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                <Camera size={24} className="text-muted-foreground mb-2" />
-                <span className="text-sm text-muted-foreground">Klik untuk unggah foto</span>
-                <span className="text-xs text-muted-foreground mt-1">JPG, PNG, max 10MB</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+        <div className="p-4 overflow-y-auto flex-1">
+          <form
+            id="report-form"
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-4 text-slate-200"
+          >
+            {/* Judul */}
+            <div>
+              <label className="block text-sm font-medium mb-1.5 text-slate-300">
+                Judul Laporan *
               </label>
-            )}
-          </div>
+              <input
+                {...register("title", { required: "Judul wajib diisi" })}
+                className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                placeholder="Contoh: Jalan berlubang di M.H. Thamrin"
+              />
+              {errors.title && (
+                <p className="text-red-400 text-xs mt-1">
+                  {errors.title.message}
+                </p>
+              )}
+            </div>
 
-          <div>
-            <label className="text-sm text-foreground block mb-2">Kategori Masalah</label>
-            <div className="relative">
-              <select value={category} onChange={e => setCategory(e.target.value as ReportCategory)} className="w-full rounded-lg px-3 py-2.5 text-sm text-foreground border border-border outline-none appearance-none pr-10" style={{ background: 'var(--input-background)' }}>
-                {Object.entries(CATEGORIES).map(([key, val]) => (
-                  <option key={key} value={key}>{val.icon} {val.label}</option>
+            {/* Kategori */}
+            <div>
+              <label className="block text-sm font-medium mb-1.5 text-slate-300">
+                Kategori *
+              </label>
+              <select
+                {...register("category", {
+                  required: "Kategori wajib dipilih",
+                })}
+                className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
+              >
+                <option value="">Pilih Kategori</option>
+                {Object.entries(CATEGORIES).map(([key, cat]) => (
+                  <option key={key} value={key}>
+                    {cat.icon} {cat.label}
+                  </option>
                 ))}
               </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              {errors.category && (
+                <p className="text-red-400 text-xs mt-1">
+                  {errors.category.message}
+                </p>
+              )}
             </div>
-          </div>
 
-          <div>
-            <label className="text-sm text-foreground block mb-2">Judul Laporan</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Deskripsikan masalah secara singkat..." className="w-full rounded-lg px-3 py-2.5 text-sm text-foreground border border-border outline-none placeholder:text-muted-foreground" style={{ background: 'var(--input-background)' }} />
-          </div>
+            {/* Lokasi */}
+            <div>
+              <label className="block text-sm font-medium mb-1.5 text-slate-300">
+                Lokasi & Titik Peta *
+              </label>
+              <input
+                {...register("address", { required: "Alamat wajib diisi" })}
+                className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all mb-2"
+                placeholder="Tuliskan nama jalan/patokan detail..."
+              />
+              {errors.address && (
+                <p className="text-red-400 text-xs mt-1 mb-2">
+                  {errors.address.message}
+                </p>
+              )}
 
-          <div>
-            <label className="text-sm text-foreground block mb-2">Deskripsi Detail</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={3} placeholder="Jelaskan kondisi masalah, sejak kapan terjadi, dampak yang dirasakan..." className="w-full rounded-lg px-3 py-2.5 text-sm text-foreground border border-border outline-none placeholder:text-muted-foreground resize-none" style={{ background: 'var(--input-background)' }} />
-          </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="flex gap-2 flex-1">
+                  <button
+                    type="button"
+                    onClick={handleGetLocation}
+                    disabled={isGettingLocation}
+                    className="flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isGettingLocation ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Navigation size={16} />
+                    )}
+                    <span className="hidden sm:inline">GPS</span>
+                  </button>
 
-          <button type="submit" disabled={loading || !imageFile} className="w-full py-3 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50" style={{ background: '#3B82F6', color: '#fff' }}>
-            {loading ? 'Mengirim...' : 'Kirim Laporan'}
+                  <button
+                    type="button"
+                    onClick={() => setShowMapPicker(true)}
+                    className="flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg transition-colors"
+                  >
+                    <MapPin size={16} />
+                    <span>Pilih Peta</span>
+                  </button>
+                </div>
+
+                {lat && lng && (
+                  <div className="flex-1 text-[10px] font-mono bg-green-500/10 text-green-400 p-2 rounded-lg border border-green-500/30 truncate text-center">
+                    {lat}, {lng}
+                  </div>
+                )}
+              </div>
+
+              <input type="hidden" {...register("latitude")} />
+              <input type="hidden" {...register("longitude")} />
+            </div>
+
+            {/* Deskripsi */}
+            <div>
+              <label className="block text-sm font-medium mb-1.5 text-slate-300">
+                Deskripsi Detail *
+              </label>
+              <textarea
+                {...register("description", {
+                  required: "Deskripsi wajib diisi",
+                })}
+                rows={3}
+                className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
+                placeholder="Jelaskan secara detail kondisi yang terjadi..."
+              />
+              {errors.description && (
+                <p className="text-red-400 text-xs mt-1">
+                  {errors.description.message}
+                </p>
+              )}
+            </div>
+
+            {/* Foto Bukti - Implementasi Preview */}
+            <div>
+              <label className="block text-sm font-medium mb-1.5 text-slate-300">
+                Foto Bukti (Wajib) *
+              </label>
+
+              {imagePreview ? (
+                // Tampilan saat gambar sudah dipilih (diambil dari snippet atas, disesuaikan gaya dark)
+                <div className="relative rounded-xl overflow-hidden border border-slate-700 group">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-48 object-cover"
+                  />
+                  {/* Overlay tombol hapus saat di-hover */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="p-2 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors"
+                      title="Hapus foto"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // Tampilan kotak unggah saat gambar kosong
+                <div className="relative border-2 border-dashed border-slate-600 rounded-xl bg-[#0F172A] hover:bg-slate-800 transition-colors p-6 flex flex-col items-center justify-center gap-2 cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    {...register("photo", {
+                      required: "Foto bukti wajib diunggah",
+                    })}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="p-3 bg-blue-500/10 rounded-full text-blue-500">
+                    <Upload size={24} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-slate-300">
+                      Klik untuk unggah foto
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      JPG, PNG, max 10MB
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {errors.photo && (
+                <p className="text-red-400 text-xs mt-1">
+                  {errors.photo.message}
+                </p>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-slate-700 bg-[#0F172A] flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors"
+          >
+            Batal
           </button>
-        </form>
+          <button
+            type="submit"
+            form="report-form"
+            disabled={createReportMutation.isPending}
+            className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-70"
+          >
+            {createReportMutation.isPending ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <CheckCircle size={16} />
+            )}
+            {createReportMutation.isPending ? "Mengirim..." : "Kirim Laporan"}
+          </button>
+        </div>
       </div>
 
       {showMapPicker && (
@@ -205,5 +361,7 @@ export function ReportForm({ onClose, onSubmit }: ReportFormProps) {
         />
       )}
     </div>
-  )
-}
+  );
+};
+
+export default ReportForm;

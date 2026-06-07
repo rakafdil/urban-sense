@@ -1,4 +1,4 @@
-import { ReportStatus, STATUS_CONFIG } from "@/components/mockData";
+import { ReportStatus, STATUS_CONFIG } from "./WargaDashboard";
 
 interface StatusBadgeProps {
   status: ReportStatus;

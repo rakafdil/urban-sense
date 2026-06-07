@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import * as bcrypt from 'bcryptjs';
+import * as argon2 from 'argon2';
 
 const pool = new Pool({
   connectionString:
@@ -33,7 +33,7 @@ async function main() {
   // ------------------------------------------------------------------ //
   //  Users
   // ------------------------------------------------------------------ //
-  const passwordHash = await bcrypt.hash('password123', 10);
+  const passwordHash = await argon2.hash('password123', 10);
 
   const admin = await prisma.user.create({
     data: {
