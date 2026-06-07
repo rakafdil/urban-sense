@@ -9,6 +9,7 @@ import { ReportModule } from './modules/report/report.module.js';
 import { AdminManagementModule } from './modules/admin-management/admin-management.module.js';
 import { GeospatialModule } from './modules/geospatial/geospatial.module.js';
 import { VolunteerValidationModule } from './modules/volunteer-validation/volunteer-validation.module.js';
+import { NotificationModule } from './modules/notification/notification.module.js';
 
 @Module({
   imports: [
@@ -19,7 +20,8 @@ import { VolunteerValidationModule } from './modules/volunteer-validation/volunt
     ReportModule,
     AdminManagementModule,
     GeospatialModule,
-    VolunteerValidationModule
+    VolunteerValidationModule,
+    NotificationModule
   ],
   controllers: [AppController],
   providers: [AppService],

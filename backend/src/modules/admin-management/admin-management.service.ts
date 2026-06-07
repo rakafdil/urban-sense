@@ -77,39 +77,44 @@ export class AdminManagementService {
         status: ReportStatus,
         adminId: string,
     ) {
-        const report =
-            await this.prisma.report.findUnique({
-                where: {
-                    id: reportId,
-                },
-            });
+        try {
+            console.log('REPORT ID:', reportId);
+            console.log('STATUS:', status);
+            console.log('ADMIN ID:', adminId);
 
-        if (!report) {
-            throw new NotFoundException(
-                'Report not found',
-            );
-        }
+            const report =
+                await this.prisma.report.findUnique({
+                    where: { id: reportId },
+                });
 
-        const updatedReport =
-            await this.prisma.report.update({
-                where: {
-                    id: reportId,
-                },
+            console.log('REPORT:', report);
+
+            const updatedReport =
+                await this.prisma.report.update({
+                    where: { id: reportId },
+                    data: { status },
+                });
+
+            console.log('UPDATED REPORT');
+
+            await this.prisma.reportStatusLog.create({
                 data: {
-                    status,
+                    reportId,
+                    updatedBy: adminId,
+                    oldStatus: report!.status,
+                    newStatus: status,
                 },
             });
 
-        await this.prisma.reportStatusLog.create({
-            data: {
-                reportId,
-                updatedBy: adminId,
-                oldStatus: report.status,
-                newStatus: status,
-            },
-        });
+            console.log('STATUS LOG CREATED');
 
-        return updatedReport;
+            return updatedReport;
+        } catch (error) {
+            console.error('UPDATE STATUS ERROR');
+            console.error(error);
+
+            throw error;
+        }
     }
 
     async dashboard(): Promise<DashboardResponseDto> {

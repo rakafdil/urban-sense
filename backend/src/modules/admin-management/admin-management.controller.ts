@@ -4,11 +4,14 @@ import {
     Get,
     Param,
     Patch,
-    Query
+    Query,
+    Req
 } from '@nestjs/common';
 import { AdminManagementService } from './admin-management.service';
 import { UpdateReportStatusDto } from './dto/update-report-status.dto';
 import { ReportQueryDto } from './dto/report-query.dto';
+import { UseGuards } from '@nestjs/common';
+import { JwtGuard } from '../auth/guard/jwt.guard';
 
 @Controller('admin')
 export class AdminManagementController {
@@ -30,17 +33,17 @@ export class AdminManagementController {
         );
     }
 
+    @UseGuards(JwtGuard)
     @Patch('reports/:id/status')
     updateStatus(
         @Param('id') reportId: string,
         @Body() dto: UpdateReportStatusDto,
+        @Req() req: any,
     ) {
         return this.adminService.updateStatus(
             reportId,
             dto.status,
-
-            // sementara hardcoded
-            'admin-id',
+            req.user.id,
         );
     }
 

@@ -1,4 +1,8 @@
-export type ReportStatus = "dilaporkan" | "diverifikasi" | "dalam_penanganan" | "selesai";
+export type ReportStatus =
+  | "open"
+  | "in_progress"
+  | "resolved"
+  | "rejected";
 export type ReportCategory = "jalan_rusak" | "banjir" | "sampah" | "infrastruktur" | "sosial" | "pencemaran";
 
 export interface Report {
@@ -28,13 +32,19 @@ export const CATEGORIES: Record<ReportCategory, { label: string; icon: string; c
   pencemaran: { label: "Pencemaran", icon: "☣️", color: "#EF4444" },
 };
 
-export const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; bg: string }> = {
-  dilaporkan: { label: "Dilaporkan", color: "#F59E0B", bg: "rgba(245,158,11,0.15)" },
-  diverifikasi: { label: "Diverifikasi", color: "#3B82F6", bg: "rgba(59,130,246,0.15)" },
-  dalam_penanganan: { label: "Dalam Penanganan", color: "#8B5CF6", bg: "rgba(139,92,246,0.15)" },
-  selesai: { label: "Selesai", color: "#10B981", bg: "rgba(16,185,129,0.15)" },
+export const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  // Status dari backend (Prisma)
+  open:         { label: "Terbuka",       color: "#EF4444" },
+  in_progress:  { label: "Diproses",      color: "#F59E0B" },
+  resolved:     { label: "Selesai",       color: "#10B981" },
+  rejected:     { label: "Ditolak",       color: "#6B7280" },
+  
+  // Status dari mock data awal (jika masih dipakai)
+  dilaporkan:   { label: "Dilaporkan",    color: "#3B82F6" },
+  dalam_penanganan: { label: "Dalam Penanganan", color: "#8B5CF6" },
+  diverifikasi: { label: "Diverifikasi",  color: "#06B6D4" },
+  selesai:      { label: "Selesai",       color: "#10B981" },
 };
-
 export const MOCK_REPORTS: Report[] = [
   {
     id: 1,
@@ -42,7 +52,7 @@ export const MOCK_REPORTS: Report[] = [
     description:
       "Terdapat lubang besar sedalam ±30cm di badan jalan, sangat berbahaya terutama malam hari. Sudah terjadi beberapa kali kecelakaan motor.",
     category: "jalan_rusak",
-    status: "dalam_penanganan",
+    status: "in_progress",
     location: "Kel. Menteng",
     address: "Jl. Jend. Sudirman No. 45",
     date: "2026-06-05",
@@ -63,7 +73,7 @@ export const MOCK_REPORTS: Report[] = [
     description:
       "Setiap hujan lebat, wilayah ini selalu tergenang minimal 2 jam. Drainase utama sudah penuh sedimen.",
     category: "banjir",
-    status: "dilaporkan",
+    status: "open",
     location: "Kel. Cikini",
     address: "Gang Mawar RT 03/RW 07",
     date: "2026-06-06",
