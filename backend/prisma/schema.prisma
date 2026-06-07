@@ -7,7 +7,7 @@ datasource db {
 }
 
 enum UserRole {
-  citizen
+  guest
   admin
   volunteer
 }
@@ -43,7 +43,7 @@ model User {
   email        String   @unique
   passwordHash String   @map("password_hash")
 
-  role UserRole @default(citizen)
+  role UserRole @default(guest)
 
   reports            Report[]
   statusUpdates      ReportStatusLog[]

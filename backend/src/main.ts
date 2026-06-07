@@ -31,8 +31,8 @@ async function bootstrap() {
 
   // Swagger API documentation
   const config = new DocumentBuilder()
-    .setTitle('Schedule Helper API')
-    .setDescription('Backend API for Schedule Helper AI Service')
+    .setTitle('Urban Sense API')
+    .setDescription('Backend API for Urban Sense Service')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
