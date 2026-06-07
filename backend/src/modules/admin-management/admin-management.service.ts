@@ -3,7 +3,7 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ReportStatus } from './enum/report-status.enum';
+import { ReportStatus } from '@prisma/client';
 import { ReportQueryDto } from './dto/report-query.dto';
 import { DashboardResponseDto } from './dto/dashboard-response.dto'
 import { AnalyticsResponseDto } from './dto/analytics-response.dto'
