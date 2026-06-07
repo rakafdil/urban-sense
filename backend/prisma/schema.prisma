@@ -5,3 +5,163 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum UserRole {
+  citizen
+  admin
+  volunteer
+}
+
+enum ReportStatus {
+  open
+  in_progress
+  resolved
+  rejected
+}
+
+enum ReportCategory {
+  road_damage
+  flood
+  garbage
+  street_light
+  drainage
+  social_assistance
+  environment
+  other
+}
+
+enum SeverityLevel {
+  low
+  medium
+  high
+  critical
+}
+
+model User {
+  id           String   @id @default(uuid())
+  fullName     String   @map("full_name")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+
+  role UserRole @default(citizen)
+
+  reports            Report[]
+  statusUpdates      ReportStatusLog[]
+  reportValidations  ReportValidation[]
+  notifications      Notification[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Report {
+  id String @id @default(uuid())
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  title       String
+  description String
+
+  category ReportCategory
+
+  status ReportStatus @default(open)
+
+  severity SeverityLevel @default(low)
+
+  priorityScore Int @default(0) @map("priority_score")
+
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+
+  address String?
+
+  photoUrl String? @map("photo_url")
+
+  aiSummary String? @map("ai_summary")
+
+  statusLogs  ReportStatusLog[]
+  validations ReportValidation[]
+  districts   ReportDistrict[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("reports")
+}
+
+model ReportStatusLog {
+  id String @id @default(uuid())
+
+  reportId String @map("report_id")
+  report   Report @relation(fields: [reportId], references: [id])
+
+  updatedBy String @map("updated_by")
+  updater   User   @relation(fields: [updatedBy], references: [id])
+
+  oldStatus ReportStatus? @map("old_status")
+  newStatus ReportStatus  @map("new_status")
+
+  notes String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("report_status_logs")
+}
+
+model ReportValidation {
+  id String @id @default(uuid())
+
+  reportId String @map("report_id")
+  report   Report @relation(fields: [reportId], references: [id])
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([reportId, userId])
+  @@map("report_validations")
+}
+
+model Notification {
+  id String @id @default(uuid())
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  title   String
+  message String
+
+  isRead Boolean @default(false) @map("is_read")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+model District {
+  id String @id @default(uuid())
+
+  name String @unique
+
+  reports ReportDistrict[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("districts")
+}
+
+model ReportDistrict {
+  reportId String @map("report_id")
+  districtId String @map("district_id")
+
+  report   Report   @relation(fields: [reportId], references: [id])
+  district District @relation(fields: [districtId], references: [id])
+
+  @@id([reportId, districtId])
+
+  @@map("report_districts")
+}
