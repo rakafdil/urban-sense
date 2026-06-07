@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('citizen', 'admin', 'volunteer');
+CREATE TYPE "UserRole" AS ENUM ('admin', 'volunteer');
 
 -- CreateEnum
 CREATE TYPE "ReportStatus" AS ENUM ('open', 'in_progress', 'resolved', 'rejected');
@@ -10,13 +10,20 @@ CREATE TYPE "ReportCategory" AS ENUM ('road_damage', 'flood', 'garbage', 'street
 -- CreateEnum
 CREATE TYPE "SeverityLevel" AS ENUM ('low', 'medium', 'high', 'critical');
 
+-- CreateEnum
+CREATE TYPE "ValidationType" AS ENUM ('upvote', 'downvote');
+
+-- CreateEnum
+CREATE TYPE "ValidationStatus" AS ENUM ('pending', 'validated', 'disputed', 'invalid');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "full_name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password_hash" TEXT NOT NULL,
-    "role" "UserRole" NOT NULL DEFAULT 'citizen',
+    "role" "UserRole" NOT NULL DEFAULT 'volunteer',
+    "totalPoints" INTEGER NOT NULL DEFAULT 0,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -38,6 +45,9 @@ CREATE TABLE "reports" (
     "address" TEXT,
     "photo_url" TEXT,
     "ai_summary" TEXT,
+    "upvote_count" INTEGER NOT NULL DEFAULT 0,
+    "downvote_count" INTEGER NOT NULL DEFAULT 0,
+    "validationStatus" "ValidationStatus" NOT NULL DEFAULT 'pending',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -62,7 +72,9 @@ CREATE TABLE "report_validations" (
     "id" TEXT NOT NULL,
     "report_id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
+    "vote" "ValidationType" NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "report_validations_pkey" PRIMARY KEY ("id")
 );

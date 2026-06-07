@@ -5,8 +5,6 @@ import {
   Controller,
   Post,
   Get,
-  Patch,
-  Param,
   Body,
   Req,
   UseInterceptors,
@@ -14,6 +12,7 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
@@ -21,13 +20,16 @@ import { Request } from 'express';
 import multer from 'multer';
 
 import { CreateReportDto } from './dto/create-report.dto';
-import { UpdateReportStatusDto } from './dto/update-report-status.dto';
 
 import { ReportService } from './report.service';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { CreateReportWithFileDto } from './dto/create-report-with-file.dto';
+import { JwtGuard } from '../auth/guard/jwt.guard';
+import { RolesGuard } from '../auth/guard/roles.guard';
+import { Roles } from '../auth/decorator/roles.decorator';
 
 @Controller('reports')
+@UseGuards(JwtGuard, RolesGuard)
 export class ReportController {
   private readonly logger = new Logger(ReportController.name);
 
@@ -39,13 +41,14 @@ export class ReportController {
     type: CreateReportWithFileDto,
   })
   @UseInterceptors(FileInterceptor('photo'))
+  @Roles('volunteer')
   async createReport(
     @Req() req: Request,
     @Body() dto: CreateReportDto,
     @UploadedFile() photo: Express.Multer.File,
   ) {
     try {
-      // const user = req.user as any;
+      const user = req.user as any;
 
       if (!photo) {
         throw new HttpException(
@@ -55,7 +58,7 @@ export class ReportController {
       }
 
       const newReport = await this.reportService.createReport(
-        '1',
+        user.id,
         dto,
         photo.buffer,
       );
@@ -76,6 +79,7 @@ export class ReportController {
   }
 
   @Get('me')
+  @Roles('volunteer')
   async getMyReports(@Req() req: Request) {
     try {
       const user = req.user as any;
@@ -91,6 +95,7 @@ export class ReportController {
   }
 
   @Get()
+  @Roles('admin')
   async getAllReports() {
     try {
       const reports = await this.reportService.getAllReports();
@@ -99,35 +104,6 @@ export class ReportController {
       this.logger.error(`Failed to fetch all reports: ${error.message}`);
       throw new HttpException(
         'Gagal mengambil data laporan.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Patch(':id/status')
-  async updateReportStatus(
-    @Param('id') id: string,
-    @Body() dto: UpdateReportStatusDto,
-    @Req() req: Request,
-  ) {
-    try {
-      const adminUser = req.user as any;
-      const updatedReport = await this.reportService.updateReportStatus(
-        id,
-        adminUser.id,
-        dto,
-      );
-
-      return {
-        success: true,
-        message: 'Status laporan berhasil diperbarui.',
-        data: updatedReport,
-      };
-    } catch (error) {
-      this.logger.error(`Failed to update report status: ${error.message}`);
-      if (error instanceof HttpException) throw error;
-      throw new HttpException(
-        'Gagal memperbarui status laporan.',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

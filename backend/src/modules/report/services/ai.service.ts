@@ -7,7 +7,6 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 // FIX 1: Import handle_file dari gradio/client
 import { Client, handle_file } from '@gradio/client';
-import { response } from 'express';
 
 export interface AiAnalysisResult {
   category: string;
@@ -87,6 +86,7 @@ Berikan analisis Anda HANYA dalam format JSON murni tanpa markdown, tanpa penjel
       } else {
         try {
           errorMessage = JSON.stringify(error, null, 2);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e: unknown) {
           errorMessage = String(error);
         }

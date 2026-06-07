@@ -7,6 +7,7 @@ import { PrismaModule } from './modules/prisma/prisma.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { ReportModule } from './modules/report/report.module.js';
 import { AdminManagementModule } from './modules/admin-management/admin-management.module.js';
+import { VolunteerValidationModule } from './modules/volunteer-validation/volunteer-validation.module.js';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { AdminManagementModule } from './modules/admin-management/admin-manageme
     AuthModule,
     UsersModule,
     ReportModule,
-    AdminManagementModule
+    AdminManagementModule,
+    VolunteerValidationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -7,7 +7,6 @@ datasource db {
 }
 
 enum UserRole {
-  guest
   admin
   volunteer
 }
@@ -37,18 +36,31 @@ enum SeverityLevel {
   critical
 }
 
+enum ValidationType {
+  upvote
+  downvote
+}
+
+enum ValidationStatus {
+  pending
+  validated
+  disputed
+  invalid
+}
+
 model User {
-  id           String   @id @default(uuid())
-  fullName     String   @map("full_name")
-  email        String   @unique
-  passwordHash String   @map("password_hash")
+  id           String @id @default(uuid())
+  fullName     String @map("full_name")
+  email        String @unique
+  passwordHash String @map("password_hash")
 
-  role UserRole @default(guest)
+  role UserRole @default(volunteer)
 
-  reports            Report[]
-  statusUpdates      ReportStatusLog[]
-  reportValidations  ReportValidation[]
-  notifications      Notification[]
+  reports           Report[]
+  statusUpdates     ReportStatusLog[]
+  reportValidations ReportValidation[]
+  notifications     Notification[]
+  totalPoints       Int                @default(0)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -81,6 +93,10 @@ model Report {
   photoUrl String? @map("photo_url")
 
   aiSummary String? @map("ai_summary")
+
+  upvoteCount      Int              @default(0) @map("upvote_count")
+  downvoteCount    Int              @default(0) @map("downvote_count")
+  validationStatus ValidationStatus @default(pending)
 
   statusLogs  ReportStatusLog[]
   validations ReportValidation[]
@@ -120,7 +136,10 @@ model ReportValidation {
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id])
 
+  vote ValidationType 
+
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@unique([reportId, userId])
   @@map("report_validations")
@@ -155,13 +174,12 @@ model District {
 }
 
 model ReportDistrict {
-  reportId String @map("report_id")
+  reportId   String @map("report_id")
   districtId String @map("district_id")
 
   report   Report   @relation(fields: [reportId], references: [id])
   district District @relation(fields: [districtId], references: [id])
 
   @@id([reportId, districtId])
-
   @@map("report_districts")
 }
