@@ -5,7 +5,9 @@
  */
 
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
-import { Client } from '@gradio/client';
+// FIX 1: Import handle_file dari gradio/client
+import { Client, handle_file } from '@gradio/client';
+import { response } from 'express';
 
 export interface AiAnalysisResult {
   category: string;
@@ -46,7 +48,7 @@ Berikan analisis Anda HANYA dalam format JSON murni tanpa markdown, tanpa penjel
       const result = (await app.predict('/chat', [
         {
           text: promptText,
-          files: [photoUrl],
+          files: [handle_file(photoUrl)],
         },
         [],
         'LLaVA-OneVision-1.5-8B-Instruct',
@@ -56,7 +58,7 @@ Berikan analisis Anda HANYA dalam format JSON murni tanpa markdown, tanpa penjel
 
       if (typeof firstData !== 'string') {
         throw new Error(
-          'Response data dari LLaVA tidak valid atau bukan merupakan teks.',
+          `Response data dari LLaVA tidak valid: ${JSON.stringify(result)}`,
         );
       }
 
@@ -82,10 +84,16 @@ Berikan analisis Anda HANYA dalam format JSON murni tanpa markdown, tanpa penjel
         errorStack = error.stack;
       } else if (typeof error === 'string') {
         errorMessage = error;
+      } else {
+        try {
+          errorMessage = JSON.stringify(error, null, 2);
+        } catch (e: unknown) {
+          errorMessage = String(error);
+        }
       }
 
       this.logger.error(
-        `Gagal menganalisis foto dengan LLaVA: ${errorMessage}`,
+        `Gagal menganalisis foto dengan LLaVA: \n${errorMessage}`,
         errorStack,
       );
 
