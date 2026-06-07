@@ -6,6 +6,7 @@ import { UsersModule } from './modules/users/users.module.js';
 import { PrismaModule } from './modules/prisma/prisma.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { ReportModule } from './modules/report/report.module.js';
+import { AdminManagementModule } from './modules/admin-management/admin-management.module.js';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ReportModule } from './modules/report/report.module.js';
     AuthModule,
     UsersModule,
     ReportModule,
+    AdminManagementModule
   ],
   controllers: [AppController],
   providers: [AppService],

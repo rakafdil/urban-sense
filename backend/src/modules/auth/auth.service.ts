@@ -2,8 +2,8 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { RegisterDto, LoginDto } from './dto/auth.dto.js';
+import { PrismaService } from '../prisma/prisma.service';
+import { RegisterDto, LoginDto } from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -11,17 +11,18 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private config: ConfigService,
-  ) {}
+  ) { }
 
   async register(dto: RegisterDto) {
-    const hash = await argon2.hash(dto.password);
+    const passwordHash = await argon2.hash(dto.password);
 
     try {
+      const fullName = dto.fullName || 'Anonymous User';
       const user = await this.prisma.user.create({
         data: {
           email: dto.email,
-          hash,
-          name: dto.name,
+          fullName: fullName,
+          passwordHash: passwordHash,
         },
       });
 
@@ -48,7 +49,7 @@ export class AuthService {
       throw new ForbiddenException('Invalid credentials');
     }
 
-    const passwordValid = await argon2.verify(user.hash, dto.password);
+    const passwordValid = await argon2.verify(user.passwordHash, dto.password);
 
     if (!passwordValid) {
       throw new ForbiddenException('Invalid credentials');
@@ -71,22 +72,14 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           email: req.user.email,
-          name: req.user.name,
-          hash: dummyHash,
-          googleAccessToken: req.user.accessToken,
-          googleRefreshToken: req.user.refreshToken,
-        },
-      });
-    } else {
-      // Update tokens if user already exists
-      user = await this.prisma.user.update({
-        where: { email: req.user.email },
-        data: {
-          googleAccessToken: req.user.accessToken,
-          googleRefreshToken: req.user.refreshToken || user.googleRefreshToken,
+          fullName: req.user.fullName || req.user.name,
+          passwordHash: dummyHash,
+          // googleAccessToken & googleRefreshToken tidak ada di schema, jangan disimpan
         },
       });
     }
+    // Jika perlu update token, tambahkan field ke schema terlebih dahulu
+    // Untuk sementara, tidak ada update
 
     return this.signToken(user.id, user.email);
   }
@@ -104,7 +97,6 @@ export class AuthService {
     const expiresIn = this.config.get<string>('JWT_EXPIRES_IN') || '1d';
 
     const token = await this.jwt.signAsync(payload, {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       expiresIn: expiresIn as any,
       secret,
     });
