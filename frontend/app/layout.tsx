@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Providers from './providers';
 
 export const metadata: Metadata = {
   title: "UrbanSense",
@@ -13,7 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased h-screen">{children}</body>
+      <body className="antialiased h-screen">
+        <Providers>
+          {children}
+        </Providers>
+      </body>
     </html>
   );
 }
